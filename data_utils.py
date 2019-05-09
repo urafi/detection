@@ -117,26 +117,32 @@ def get_preds(prs, scales, warp):
     val_k, ind = prso.topk(30, dim=0)
     xs = ind % res
     ys = (ind / res).long()
-    xst, yst, sc = [], [], []
+    xst, yst, sc, scores = [], [], [], []
     N = len(val_k)
     for i in range(N):
-        if val_k[i] >= 0.15:
+        if val_k[i] >= 0.001:
             xst.append(xs[i].item() * 4)
             yst.append(ys[i].item() * 4)
             sc.append(np.exp(scales[0][ys[i]][xs[i]]) * warp[0][0])
-
+            scores.append(val_k[i])
     points = np.ones((3, len(sc)))
     points[0, :], points[1, :] = xst, yst
     dets = np.matmul(warp, points)
 
-    return dets, sc
+    return dets, sc, scores
 
 
 def apply_augmentation_test_td(path, example, output_size=256):
 
     im = cv2.imread(path, 1)
     crop_pos = example['center']
+    #crop_pos = [example['bbox'][0] + example['bbox'][2]/2, example['bbox'][1] + example['bbox'][3]/2]
+    #x1, x2 = example['unit']['GT_bbox'][0], example['unit']['GT_bbox'][2]
+    #y1, y2 = example['unit']['GT_bbox'][1], example['unit']['GT_bbox'][3]
+    #crop_pos = [(x1+x2)/2, (y1+y2)/2]
+    #max_d = np.maximum(abs(x1-x2), abs(y1-y2))
     max_d = example['scale']
+    #max_d = np.maximum(example['bbox'][2], example['bbox'][3])
     scales = [output_size / float(max_d), output_size / float(max_d)]
 
     param = {'rot': 0,
@@ -220,3 +226,4 @@ def get_preds_td(prs, mat, sr):
         keypoints.append(1)
 
     return keypoints, score.item()
+
