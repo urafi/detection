@@ -53,7 +53,8 @@ class Coco(Dataset):
         self.is_train = (dtype == 'train')
         self.transform = transform
         self.output_size = output_size
-        self.generate_heatmaps = GenerateHeatmap(64, 1)
+        self.heatmapres = output_size // 4
+        self.generate_heatmaps = GenerateHeatmap(self.heatmapres, 1)
 
         with open(file_path) as anno_file:
             self.anno = json.load(anno_file)
@@ -165,7 +166,7 @@ class Coco(Dataset):
             centers_warped.append(ct)
 
         mw = cv.warpAffine(m*255, t_form[0:2, :], (output_size, output_size))/255
-        mw = cv.resize(mw,(64, 64))
+        mw = cv.resize(mw, (self.heatmapres, self.heatmapres))
         mw = (mw > 0.5).astype(np.float32)
         hms = self.generate_heatmaps(centers_warped)
         votes, masks = self.generate_offsets(centers_warped, corners_warped)
@@ -177,13 +178,13 @@ class Coco(Dataset):
         img /= 255
         hms = torch.from_numpy(hms).float()
         mw = torch.from_numpy(mw)
-        mw = mw.view(1, 64, 64)
+        mw = mw.view(1, self.heatmapres, self.heatmapres)
 
         return img, hms, mw, votes, masks
 
     def generate_offsets(self, keypoints, offsets):
 
-        output_res = 64
+        output_res = self.heatmapres
         srmasks = torch.zeros(1, output_res, output_res)
         sroff = torch.zeros(1, output_res, output_res)
 
